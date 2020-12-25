@@ -19,7 +19,7 @@ def create_optimizer(init_lr, num_train_steps, num_warmup_steps,global_step):
     learning_rate = tf.compat.v1.train.polynomial_decay(learning_rate,
                                         global_step,
                                         num_train_steps,
-                                        end_learning_rate=0.01,
+                                        end_learning_rate=3e-6,
                                         power=1.0,
                                         cycle=False)
        
@@ -39,7 +39,7 @@ def create_optimizer(init_lr, num_train_steps, num_warmup_steps,global_step):
     else:
         learning_rate = learning_rate.func(global_step)
         
-        
+    learning_rate = init_lr
     optimizer = AdamWeightDecayOptimizer(learning_rate=learning_rate,
                                          weight_decay_rate=0.01,
                                          beta_1=0.9,
@@ -97,7 +97,6 @@ class BertModelTrainer():
         self.learning_rate = 3e-5
         self.num_train_steps = 20
         self.num_warmup_steps = 10
-        self.use_tpu = False
         self.global_step = 0
         
         self.optimizer = create_optimizer(self.learning_rate,
@@ -124,7 +123,7 @@ class BertModelTrainer():
         return tf.reduce_mean(loss_)
     
     def CheckPoint_Model(self,BertModel,checkpoint_path,max_to_keep):
-        self.ckpt = tf.train.Checkpoint(BertModel=BertModel,optimizer=self.optimizer)
+        self.ckpt = tf.train.Checkpoint(OUR_BERT=BertModel,optimizer=self.optimizer)
 
         self.ckpt_manager = tf.train.CheckpointManager(self.ckpt, checkpoint_path, max_to_keep=max_to_keep)
 
@@ -220,26 +219,17 @@ class BertModelTrainer():
                     scaffold_fn = None
                     if init_checkpoint:
                         (assignment_map, initialized_variable_names) = OurBertModel.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
-                    
-                        if self.use_tpu:
-                            def tpu_scaffold():
-                                tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
-                                return tf.train.Scaffold()
-                            scaffold_fn = tpu_scaffold
-                        else:
-                            tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
-                    
+                        
+                        tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                            
+                    """
                     tf.compat.v1.logging.info("**** Trainable Variables ****")
                     for var in tvars:
                         init_string = ""
                         if var.name in initialized_variable_names:
                             init_string = ", *INIT_FROM_CKPT*"
-                            tf.compat.v1.logging.info("  name = %s, shape = %s%s", var.name, var.shape,init_string)
-                    
-                    if self.use_tpu:
-                        self.optimizer = tf.compat.v1.tpu.CrossShardOptimizer(self.optimizer)
-                    
-                        
+                            tf.compat.v1.logging.info("  name = %s, shape = %s%s", var.name, var.shape,init_string)              
+                    """   
                     train_op = self.optimizer.apply_gradients(zip(self.gradients, tvars), 
                                                               global_step=self.global_step,
                                                               name=initialized_variable_names)
@@ -247,13 +237,6 @@ class BertModelTrainer():
     
                     
                     train_op = tf.group(train_op, tf.convert_to_tensor([self.global_step],tf.float32))
-                    
-                    """
-                    output_spec = tf.compat.v1.estimator.tpu.TPUEstimatorSpec(mode='train',
-                                                                              loss=total_loss,
-                                                                              train_op=train_op,
-                                                                              scaffold_fn=scaffold_fn)
-                    """
                     
                     #########################################################
                     
