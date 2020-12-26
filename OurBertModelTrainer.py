@@ -19,7 +19,7 @@ def create_optimizer(init_lr, num_train_steps, num_warmup_steps,global_step):
     learning_rate = tf.compat.v1.train.polynomial_decay(learning_rate,
                                         global_step,
                                         num_train_steps,
-                                        end_learning_rate=3e-6,
+                                        end_learning_rate=8e-8,
                                         power=1.0,
                                         cycle=False)
        
@@ -39,12 +39,12 @@ def create_optimizer(init_lr, num_train_steps, num_warmup_steps,global_step):
     else:
         learning_rate = learning_rate.func(global_step)
         
-    learning_rate = init_lr
+
     optimizer = AdamWeightDecayOptimizer(learning_rate=learning_rate,
                                          weight_decay_rate=0.01,
                                          beta_1=0.9,
                                          beta_2=0.999,
-                                         epsilon=1e-6,
+                                         epsilon=3e-7,
                                          exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"])
     
     return optimizer
@@ -95,9 +95,9 @@ class BertModelTrainer():
         """
         
         self.learning_rate = 3e-5
-        self.num_train_steps = 20
-        self.num_warmup_steps = 10
-        self.global_step = 0
+        self.num_train_steps = 2000
+        self.num_warmup_steps = None#100
+        self.global_step = 1
         
         self.optimizer = create_optimizer(self.learning_rate,
                                           self.num_train_steps,
@@ -147,7 +147,7 @@ class BertModelTrainer():
         
         init_checkpoint = self.CheckPoint_Model(BertModel,checkpoint_path,max2keep)
         
-        
+        self.global_step = 1
         for epoch in range(epochs):
             print("Start of epoch {}".format(epoch+1))
             start = time.time()
@@ -162,13 +162,15 @@ class BertModelTrainer():
             batchRealSeq = []
             batchinput = []
             batchNSPLabel = []
-            self.global_step = 0
             
             self.optimizer = create_optimizer(self.learning_rate,
                                               self.num_train_steps,
                                               self.num_warmup_steps,
                                               self.global_step)
+            ##################################################################
             self.global_step = self.global_step+1
+            #self.num_warmup_steps = self.num_warmup_steps-1
+            ##################################################################
             for index,sentence in enumerate(inputs):
                 mask_input = tf.convert_to_tensor(sentence)
                 target_segment = tf.convert_to_tensor(segment[index])
