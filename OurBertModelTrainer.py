@@ -34,10 +34,10 @@ def create_optimizer(init_lr, num_train_steps, num_warmup_steps,global_step):
         warmup_learning_rate = init_lr * warmup_percent_done
         
         is_warmup = tf.cast(global_steps_int < warmup_steps_int, tf.float32)
-        learning_rate = ((1.0 - is_warmup) * learning_rate.func(global_step) + is_warmup * warmup_learning_rate)
+        learning_rate = ((1.0 - is_warmup) * learning_rate.func(global_step-1) + is_warmup * warmup_learning_rate)
         
     else:
-        learning_rate = learning_rate.func(global_step)
+        learning_rate = learning_rate.func(global_step-1)
         
 
     optimizer = AdamWeightDecayOptimizer(learning_rate=learning_rate,
@@ -85,9 +85,9 @@ class BertModelTrainer():
         self.train_accuracy_MLM = tf.keras.metrics.SparseCategoricalAccuracy(name="train_accuracy_MLM")
         self.train_accuracy_NSP = tf.keras.metrics.BinaryAccuracy(name="train_accuracy_NSP")
         
+        """
         leaning_rate = CustomSchedule(HIDDEN_UNITS)
         
-        """
         self.optimizer = tf.keras.optimizers.Adam(leaning_rate,
                                                   beta_1=0.9,
                                                   beta_2=0.98,
@@ -249,7 +249,7 @@ class BertModelTrainer():
                     self.train_accuracy_NSP(batchNSPLabel, NSP_pred)
                     
                     
-                    if index%64 == 0 or index==len(inputs)-1:
+                    if index%128 == 0 or index==len(inputs)-1:
                         grad_list = [grad for grad in self.gradients if grad is not None]
                         print("Number of not None grads is: {}".format(len(grad_list)))
                         print("ALL Trainable Variables in MLM:{}".format(len(BertModel.trainable_variables)))
@@ -265,11 +265,12 @@ class BertModelTrainer():
                     batchRealSeq = []
                     batchinput = []
                     batchNSPLabel = []
-                          
-            ckpt_save_path = self.ckpt_manager.save()
-            print("Saving checkpoint for epoch {} at {}".format(epoch+1,ckpt_save_path))
-            print("Time taken for 1 epoch: {} secs\n".format(time.time() - start))
-            init_checkpoint = self.ckpt_manager.latest_checkpoint
+                    
+                    if index%100000 == 0 or index==len(inputs)-1:
+                        ckpt_save_path = self.ckpt_manager.save()
+                        print("Saving checkpoint for epoch {} batch {} at {}".format(epoch+1,index,ckpt_save_path))
+                        print("Time taken for 1 epoch: {} secs\n".format(time.time() - start))
+                        init_checkpoint = self.ckpt_manager.latest_checkpoint
         
         return BertModel
     
