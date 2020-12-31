@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras import initializers
 
 class PositionalEncoding(layers.Layer):
     
@@ -47,17 +48,25 @@ class MultiHeadAttention(layers.Layer):
         
         self.d_proj = self.d_model // self.nb_proj
         
-        self.query_lin = keras.layers.Dense(units=self.d_model)
-        self.key_lin = keras.layers.Dense(units=self.d_model)
-        self.value_lin = keras.layers.Dense(units=self.d_model)
+        self.query_lin = keras.layers.Dense(units=self.d_model,kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                            bias_initializer=initializers.Zeros())
+        self.key_lin = keras.layers.Dense(units=self.d_model,kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                          bias_initializer=initializers.Zeros())
+        self.value_lin = keras.layers.Dense(units=self.d_model,kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                            bias_initializer=initializers.Zeros())
         
-        self.final_lin = keras.layers.Dense(units=self.d_model)
+        self.final_lin = keras.layers.Dense(units=self.d_model,kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                            bias_initializer=initializers.Zeros())
         
-    def split2proj(self,inputs,batch_size): # inputs: (batch_size, seq_length, d_model)
+    def split2proj(self,inputs,batch_size): 
+        # inputs: (batch_size, seq_length, d_model)
         shape = (batch_size,-1,self.nb_proj,self.d_proj)
-        splited_inputs = tf.reshape(inputs, shape=shape) # (batch_size, seq_length, nb_proj, d_proj)
+        # (batch_size, seq_length, nb_proj, d_proj)
+        splited_inputs = tf.reshape(inputs, shape=shape) 
         
-        return tf.transpose(splited_inputs, perm=[0, 2, 1, 3]) # (batch_size, nb_proj, seq_length, d_proj)
+        # (batch_size, nb_proj, seq_length, d_proj)
+        return tf.transpose(splited_inputs, perm=[0, 2, 1, 3]) 
+        
     
     def call(self, queries, keys, values, mask):
         batch_size = tf.shape(queries)[0]
@@ -94,8 +103,11 @@ class EncoderLayer(layers.Layer):
         self.dropout_1 = keras.layers.Dropout(rate=self.dropout_rate)
         self.norm_1 = keras.layers.LayerNormalization(epsilon=1e-6)
         
-        self.dense_1 = keras.layers.Dense(units=self.FFN_units,activation="relu")
-        self.dense_2 = keras.layers.Dense(units=self.d_model)
+        self.dense_1 = keras.layers.Dense(units=self.FFN_units,activation="relu",
+                                          kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                          bias_initializer=initializers.Zeros())
+        self.dense_2 = keras.layers.Dense(units=self.d_model,kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                          bias_initializer=initializers.Zeros())
         self.dropout_2 = keras.layers.Dropout(rate=self.dropout_rate)
         self.norm_2 = keras.layers.LayerNormalization(epsilon=1e-6)
     
@@ -123,7 +135,8 @@ class Encoder(layers.Layer):
         self.nb_layers = nb_layers
         self.d_model = d_model
         
-        self.embedding = layers.Embedding(vocab_size,d_model)
+        self.embedding = layers.Embedding(vocab_size,d_model,
+                                          embeddings_initializer=initializers.RandomNormal(stddev=0.01,seed=3))
         self.pos_encoding = PositionalEncoding()
         self.dropout = layers.Dropout(rate=dropout_rate)
         
@@ -163,8 +176,11 @@ class DecoderLayer(layers.Layer):
         self.norm_2 = layers.LayerNormalization(epsilon=1e-6)
         
         # Feed foward
-        self.dense_1 = layers.Dense(units=self.FFN_units,activation="relu")
-        self.dense_2 = layers.Dense(units=self.d_model)
+        self.dense_1 = layers.Dense(units=self.FFN_units,activation="relu",
+                                    kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                    bias_initializer=initializers.Zeros())
+        self.dense_2 = layers.Dense(units=self.d_model,kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                    bias_initializer=initializers.Zeros())
         self.dropout_3 = layers.Dropout(rate=self.dropout_rate)
         self.norm_3 = layers.LayerNormalization(epsilon=1e-6)
         
@@ -197,7 +213,8 @@ class Decoder(layers.Layer):
         self.d_model = d_model
         self.nb_layers = nb_layers
         
-        self.embedding = layers.Embedding(vocab_size,d_model)
+        self.embedding = layers.Embedding(vocab_size,d_model,
+                                          embeddings_initializer=initializers.RandomNormal(stddev=0.01,seed=3))
         self.pos_encoding = PositionalEncoding()
         self.dropout = layers.Dropout(rate=dropout_rate)
         
@@ -240,7 +257,9 @@ class Transformer(tf.keras.Model):
                                dropout_rate,
                                vocab_size_dec,
                                d_model)
-        self.last_linear = layers.Dense(units=vocab_size_dec, activation="softmax",name="lin_ouput")
+        self.last_linear = layers.Dense(units=vocab_size_dec, activation="softmax",name="lin_ouput",
+                                        kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                        bias_initializer=initializers.Zeros())
         
     def create_padding_mask(self, seq):
         mask = tf.cast(tf.math.equal(seq, 0), tf.float32)
