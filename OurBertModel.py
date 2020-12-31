@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras import initializers
 
 from OurTransformers import EncoderLayer
 import collections
@@ -60,8 +61,10 @@ class MyBertModel(tf.keras.Model):
         self.nb_hidden_units = nb_hidden_units
         self.vocab_size = vocab_size
         
-        self.embedding = layers.Embedding(vocab_size,nb_hidden_units)
-        self.segmentEmbedding = layers.Embedding(3,nb_hidden_units)
+        self.embedding = layers.Embedding(vocab_size,nb_hidden_units,
+                                          embeddings_initializer=initializers.RandomNormal(stddev=0.01,seed=3))
+        self.segmentEmbedding = layers.Embedding(3,nb_hidden_units,
+                                                 embeddings_initializer=initializers.RandomNormal(stddev=0.01,seed=3))
         
         self.bert_embedding = BertEmbeddingLayer()
         self.dropout = layers.Dropout(rate=dropout_rate)
@@ -69,11 +72,17 @@ class MyBertModel(tf.keras.Model):
         self.enc_layers = [EncoderLayer(FFN_units,nb_attention_head,dropout_rate) 
                            for _ in range(nb_encoder_layers)]
 
-        self.Dense_layer = layers.Dense(units=nb_hidden_units,activation=self.gelu_activation_function)
+        self.Dense_layer = layers.Dense(units=nb_hidden_units,activation=self.gelu_activation_function,
+                                        kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                        bias_initializer=initializers.Zeros())
         self.Normalization = keras.layers.LayerNormalization(epsilon=1e-6)
         
-        self.NSP_layer = layers.Dense(units=1,activation="sigmoid",name="NSP_ouput")
-        self.MLM_layer = layers.Dense(units=vocab_size, activation="softmax",name="MLM_output")
+        self.NSP_layer = layers.Dense(units=1,activation="sigmoid",name="NSP_ouput",
+                                      kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                      bias_initializer=initializers.Zeros())
+        self.MLM_layer = layers.Dense(units=vocab_size, activation="softmax",name="MLM_output",
+                                      kernel_initializer=initializers.RandomNormal(stddev=0.01,seed=3),
+                                      bias_initializer=initializers.Zeros())
         
     def gelu_activation_function(self,x):
         cdf = 0.5 * (1.0 + tf.tanh(
@@ -86,6 +95,7 @@ class MyBertModel(tf.keras.Model):
     
     def call(self,inputs,segments_order,training):
         enc_mask = self.create_padding_mask(inputs)
+        #enc_mask = None
         
         outputs = self.embedding(inputs)
         outputs *= tf.math.sqrt(tf.cast(self.nb_hidden_units, tf.float32))
@@ -105,6 +115,7 @@ class MyBertModel(tf.keras.Model):
     
     def train_for_MLM(self,inputs,segments_order,training):#,mask_index,MaxSeq
         enc_mask = self.create_padding_mask(inputs)
+        #enc_mask = None
         
         outputs = self.embedding(inputs)
         outputs = outputs*np.sqrt(self.nb_hidden_units)
@@ -127,6 +138,7 @@ class MyBertModel(tf.keras.Model):
     
     def train_for_NSP(self,inputs,segments_order,training):
         enc_mask = self.create_padding_mask(inputs)
+        #enc_mask = None
         
         outputs = self.embedding(inputs)
         outputs = outputs*np.sqrt(self.nb_hidden_units)
