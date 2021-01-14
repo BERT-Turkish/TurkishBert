@@ -215,7 +215,7 @@ class BertModelTrainer():
                         MLM_Masked = []    # MLM_pred (32,64,32000) batchMaskIndex (32,x)
                         for embedWord,Maskindex in zip(MLM_pred,batchMaskIndex):
                             MLM_Masked.append([ew for idx,ew in enumerate(embedWord) if idx in Maskindex])
-                        return MLM_Masked,batchMaskIndex
+                        
                         MLM_Masked = tf.convert_to_tensor(MLM_Masked,tf.float32)
                         
                         loss_MLM = self.loss_function_for_MLM(batchMaskLabel,MLM_Masked)
