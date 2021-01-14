@@ -20,8 +20,7 @@ from transformers import AutoTokenizer
 from OurTransformers import EncoderLayer
 from OurBertTokenizer import MyTokenizer
 from OurBertModel import MyBertModel
-#from OurBertModelTrainer import BertModelTrainer
-from OurBertModelTrainer_WithMask import BertModelTrainer
+from OurBertModelTrainer import BertModelTrainer
 
 
 if __name__ == "__main__":
